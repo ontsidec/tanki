@@ -5,26 +5,59 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.awt.geom.*;
+import java.util.ArrayList;
+import java.util.Objects;
+
+class detectedRobot {
+    // TODO poprawić porównywanie stringów
+    // TODO poprawić rysowanie
+    // TODO mapa + sterowanie po mapie
+    private final double _positionX;
+    private final double _positionY;
+    private final String _robotID;
+
+    public detectedRobot(double positionX, double positionY, String robotID) {
+        this._positionX = positionX;
+        this._positionY = positionY;
+        this._robotID = robotID;
+        System.out.println("Dodałem robota!");
+    }
+
+    public double getPositionX() {
+        return _positionX;
+    }
+
+    public double getPositionY() {
+        return _positionY;
+    }
+
+    public String getRobotID() {
+        return _robotID;
+    }
+}
 
 public class moloch extends AdvancedRobot {
     private Point2D robotDestination;
     private Point2D robotPosition;
+    private Point2D startPosition;
     private boolean manual_movement = false;
     private static final double MAX_VELOCITY = 8;
     private static final double WALL_MARGIN = 25;
 
-
     private int scannedX = Integer.MIN_VALUE;
     private int scannedY = Integer.MIN_VALUE;
+    private ArrayList<detectedRobot> robotList;
+    private boolean[][] drawMap;
+
+    public moloch() {
+        this.robotList = new ArrayList<>();
+
+    }
 
     /*********************************** MAIN PROGRAM ******************************************/
     public void run() {
-        addCustomEvent(new Condition("too_close_to_walls") {
-            public boolean test() {
-                return ((getX() < WALL_MARGIN || getX() > getBattleFieldWidth() - WALL_MARGIN
-                        || getY() < WALL_MARGIN || getY() > getBattleFieldHeight() - WALL_MARGIN));
-            }
-        });
+        this.drawMap = new boolean[(int) (getBattleFieldWidth() / getWidth()) + 2][(int) (getBattleFieldHeight() / getHeight()) + 2];
+        startPosition = new Point2D.Double(getX(), getY());
 
         while (true) {
             robotPosition = new Point2D.Double(getX(), getY()); // wolniejsze odświeżanie pozycji
@@ -101,19 +134,27 @@ public class moloch extends AdvancedRobot {
         // Oblicz pozycję wykrytego robota
         scannedX = (int) (getX() + Math.sin(angle) * e.getDistance());
         scannedY = (int) (getY() + Math.cos(angle) * e.getDistance());
+
+        boolean isAdded = false;
+        for (detectedRobot i : robotList) {
+            if (Objects.equals(i.getRobotID(), e.getName())) {
+                isAdded = true;
+            }
+        }
+
+        if (!isAdded) {
+            robotList.add(new detectedRobot(scannedX, scannedY, e.getName()));
+
+            int i = scannedX / (int) getWidth();
+            int j = scannedY / (int) getHeight();
+            drawMap[i][j] = true;
+        }
     }
 
     public void onMouseClicked(MouseEvent e) {
         // Kiedy mysz kliknięta wskaż punkt docelowy
         robotDestination = e.getPoint();
         manual_movement = true;
-    }
-
-    public void onCustomEvent(CustomEvent e) {
-        if (e.getCondition().getName().equals("too_close_to_walls")) {
-            // Zatrzymaj jeżeli za blisko ściany
-            setMaxVelocity(0);
-        }
     }
 
     /*********************************** PAINTING ******************************************/
@@ -124,16 +165,39 @@ public class moloch extends AdvancedRobot {
         robotPosition = new Point2D.Double(getX(), getY());
 
         // Wyświetlanie różnych zmiennych
-        String x = "Robot X: " + Double.toString(getX());
-        String y = "Robot Y: " + Double.toString(getY());
-
         g.setColor(Color.WHITE);
-        g.drawString(x, 10, 20);
-        g.drawString(y, 10, 10);
+        g.drawString("Robot X: " + getX(), 10, 20);
+        g.drawString("Robot Y: " + getY(), 10, 10);
+
+        // Siatka
+        int temp_x = (int) (startPosition.getX() - (getWidth() / 2));
+        int temp_y = (int) (startPosition.getY() - (getHeight() / 2));
+        while (temp_x > 0) {
+            temp_x -= (int) getWidth();
+        }
+        while (temp_y > 0) {
+            temp_y -= (int) getHeight();
+        }
+
+        for (int x = temp_x; x < (int) getBattleFieldWidth(); x += (int) getWidth()) {
+            for (int y = temp_y; y < (int) getBattleFieldHeight(); y += (int) getHeight()) {
+                g.drawLine(x, y, x , y + (int) getHeight());
+                g.drawLine(x, y, x + (int) getWidth(), y);
+            }
+        }
 
         // Oznaczenie ostatnio wykrytego przeciwnika
         g.setColor(new Color(0xff, 0x00, 0x00, 0x80));
         g.drawLine(scannedX, scannedY, (int) getX(), (int) getY());
-        g.fillRect(scannedX - 20, scannedY - 20, 40, 40);
+
+        for (int i = 0; i < robotList.size(); i++) {
+            string =
+        }
+        for (int i = 0; i < drawMap.length; i++) {
+            for (int j = 0; j < drawMap[i].length; j++) {
+                if (drawMap[i][j])
+                    g.fillRect((int) getHeight() * i, (int) getWidth() * j, 40, 40);
+            }
+        }
     }
 }
